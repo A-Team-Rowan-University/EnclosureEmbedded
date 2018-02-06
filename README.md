@@ -1,5 +1,5 @@
 # Lab 6: Open Loop Systems
-#### Joshua Gould
+
 ##### Created - 11-25-2017
 ##### Updated - 11-26-2017
 

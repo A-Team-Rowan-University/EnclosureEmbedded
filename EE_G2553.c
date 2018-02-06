@@ -10,8 +10,8 @@
 void TimerAInit(void);
 void TimerBInit(void);
 void ADC12Init(void);
-void Fan_GPIOInit(void);
-void Temp_GPIOInit(void);
+void fanControl(void);
+void tempControl(void);
 
 //Variable declaration//
 unsigned volatile int		adc_in = 0;
@@ -21,26 +21,34 @@ volatile float			tempF = 0;
 volatile float			voltage = 0; 
 int				PWM = 0;
 
-void Temp_GPIOInit()
+void tempControl()
 {
+	//probe 1
+	P1OUT &= ~BIT0;        // Clear LED to start
+	P1DIR |= BIT0;         // P1.0 output
+	P1SEL1 |= BIT5;        // Configure P1.5 for ADC
+	P1SEL0 |= BIT5;
+	
+	//probe 2
 	P1OUT &= ~BIT0;        // Clear LED to start
 	P1DIR |= BIT0;         // P1.0 output
 	P1SEL1 |= BIT5;        // Configure P1.5 for ADC
 	P1SEL0 |= BIT5;
 }
-void Fan_GPIOInit(void)
+void fanControl(void)
 {
 	//For pin 1.4
 	P1DIR |= BIT4;		//Pin 1.4
 	P1SEL1 &= ~BIT4;	//control which functions will be connected or multiplexed onto the pins.  
 	P1SEL0 |= BIT4;		//The higher four bits have as their function to enable JTAG or to disable it.
+	PWM = 0xFF;
 }
 
 int main(void)
 {
 	WDTCTL = WDTPW + WDTHOLD;		// Stop WDT
-	Fan_GPIOInit();					// Fan Pin Initialization
-	Temp_GPIOInit();				// Temperature GPIO Initialization
+	fanControl();					// Fan Pin Initialization
+	tempControl();				// Temperature GPIO Initialization
 	TimerAInit();					// Timer A Function call UART
 	TimerBInit();					// Timer B Function call PWM
 
@@ -113,8 +121,8 @@ __interrupt void USCI_A0_ISR(void)
 
 void ADC12Init(void)
 {
-	ADC12CTL0 = ADC12SHT0_2 + ADC12ON;      // Set sample time
-	ADC12CTL1 = ADC12SHP;                   // Enable sample timer
+	ADC12CTL0 = ADC12SHT0_2 + ADC12ON;      // Set sample time for the ADC12 control register 0
+	ADC12CTL1 = ADC12SHP;                   // Enable sample timer for the ADC12 control register 1
 	ADC12CTL2 |= ADC12RES_2;                // 12-bit conversion results
 	ADC12MCTL0 = ADC12INCH_5 | ADC12VRSEL_1;// Vref+ = , Input
 	ADC12IER0 |= ADC12IE0;                  // Enable ADC conv complete interrupt
@@ -133,7 +141,7 @@ void TimerBInit(void) //PWM Timer
 {
 	TB0CCTL1 = OUTMOD_3;			//Set OUTMOD_3 (set/reset) for CCR1
 									//Set initial values for CCR1 (255 -> 254)
-	TB0CCR1 = 0xFF;				//reset and set immediately (May change to slower clock)
+	TB0CCR1 = 0xFF;				//reset and set immediately 
 	TB0CCR0 = 255 - 1;			//Set CCR0 for a ~1kHz clock.
 	TB0CTL = TBSSEL_2 + MC_1;		//Enable Timer B0 with SMCLK and up mode. 1MHz
 }
