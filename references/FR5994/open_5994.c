@@ -103,8 +103,8 @@ __interrupt void USCI_A0_ISR(void)
 
 		break;
 
-	case USCI_UART_UCTXIFG: break;
-	case USCI_UART_UCSTTIFG: break;
+	case USCI_UART_UCTXIFG:    break;
+	case USCI_UART_UCSTTIFG:   break;
 	case USCI_UART_UCTXCPTIFG: break;
 
 	default:
@@ -153,8 +153,8 @@ void TimerBInit(void) //PWM Timer
 {
 	TB0CCTL1 = OUTMOD_3;			//Set OUTMOD_3 (set/reset) for CCR1
 									//Set initial values for CCR1 (255 -> 254)
-	TB0CCR1 = 0xFF;				//reset and set immediately (May change to slower clock)
-	TB0CCR0 = 255 - 1;			//Set CCR0 for a ~1kHz clock.
+	TB0CCR1 = 0xFF;				    //reset and set immediately (May change to slower clock)
+	TB0CCR0 = 255 - 1;			    //Set CCR0 for a ~1kHz clock.
 	TB0CTL = TBSSEL_2 + MC_1;		//Enable Timer B0 with SMCLK and up mode. 1MHz
 }
 #pragma vector=TIMER0_A0_VECTOR
