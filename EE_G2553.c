@@ -66,58 +66,6 @@ int main(void)
 		__no_operation(); // For debugger
 	}
 }
-//ADC ISR
-#pragma vector=EUSCI_A0_VECTOR
-__interrupt void USCI_A0_ISR(void)
-{
-	switch (__even_in_range(UCA0IV, USCI_UART_UCTXCPTIFG))
-	{
-	case USCI_NONE: break;
-	case USCI_UART_UCRXIFG:
-		while (!(UCA0IFG&UCTXIFG));
-
-		tempC_set = UCA0RXBUF;             // send RX to tempC_set
-
-		if (tempC_set <= 32)
-		{
-			PWM = 0xFF;
-		}
-		else if (tempC_set > 32 && tempC_set <= 34)
-		{
-			PWM = ((tempC_set - 36.87) / -0.0917)
-		}
-		else if (tempC_set > 34 && tempC_set <= 36)
-		{
-			PWM = ((tempC_set - 48.24) / -0.08)
-		else if (tempC_set > 36 && tempC_set <= 39)
-			{
-				PWM = ((tempC_set - 42.03) / -0.0394)
-			}
-		else if (tempC_set > 39 && tempC_set <= 43)
-		{
-			PWM = ((tempC_set - 50.85) / -0.1538)
-		}
-		else if (tempC_set > 43 && tempC_set <= 54)
-		{
-			PWM = ((tempC_set - 57.90) / -0.2759)
-		}
-		else if (tempC_set > 54)
-		{
-			PWM = 25;
-		}
-
-		TB0CCR1 = PWM;
-
-		break;
-
-	case USCI_UART_UCTXIFG: break;
-	case USCI_UART_UCSTTIFG: break;
-	case USCI_UART_UCTXCPTIFG: break;
-
-	default:
-		break;
-	}
-}
 
 void ADC12Init(void)
 {
@@ -129,7 +77,7 @@ void ADC12Init(void)
 
 }
 
-void TimerAInit(void)  //Timer used for UART
+void TimerAInit(void)  //Timer used the outside probe
 {
 	TA0CCTL0 = CCIE;			//Disable timer Interrupt
 	TA0CCTL1 = OUTMOD_3;			//Set/Reset when the timer counts to the TA0CCR1 value, reset for TA0CCR0
@@ -137,19 +85,26 @@ void TimerAInit(void)  //Timer used for UART
 	TA0CCR0 = 4096 - 1;			//Set CCR0 for a ~1kHz clock.
 	TA0CTL = TASSEL_1 + MC_1 + ID_3;	//Enable Timer A with SMCLK
 }
-void TimerBInit(void) //PWM Timer
+void TimerBInit(void) //TImer used for the inside probe
 {
-	TB0CCTL1 = OUTMOD_3;			//Set OUTMOD_3 (set/reset) for CCR1
-									//Set initial values for CCR1 (255 -> 254)
-	TB0CCR1 = 0xFF;				//reset and set immediately 
-	TB0CCR0 = 255 - 1;			//Set CCR0 for a ~1kHz clock.
-	TB0CTL = TBSSEL_2 + MC_1;		//Enable Timer B0 with SMCLK and up mode. 1MHz
+	TB0CCTL0 = CCIE;			//Disable timer Interrupt
+	TB0CCTL1 = OUTMOD_3;			//Set/Reset when the timer counts to the TB0CCR1 value, reset for TB0CCR0
+	TB0CCR1 = 256;
+	TB0CCR0 = 4096 - 1;			//Set CCR0 for a ~1kHz clock.
+	TB0CTL = TASSEL_1 + MC_1 + ID_3;	//Enable Timer B with SMCLK
 }
 #pragma vector=TIMER0_A0_VECTOR
 __interrupt void TIMER0_A0_ISR(void)
 {
 	ADC12CTL0 |= ADC12SC | ADC12ENC;	//start ADC conversation
 }
+
+#pragma vector=TIMER0_B0_VECTOR
+__interrupt void TIMER0_B0_ISR(void)
+{
+	ADC12CTL0 |= ADC12SC | ADC12ENC;	//start ADC conversation
+}
+
 //ADC ISR
 #pragma vector=ADC12_B_VECTOR
 __interrupt void ADC12ISR(void)
@@ -161,3 +116,5 @@ __interrupt void ADC12ISR(void)
 	while (!(UCA0IFG&UCTXIFG));
 	UCA0TXBUF = tempC;		     //change to =tempF to output in Fahrenheit 
 }
+
+
