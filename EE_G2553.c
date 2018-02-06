@@ -1,28 +1,7 @@
 //******************************************************************************
-//							+
-//                 MSP430FR5994				|_____
-//              ---------------				     |
-//         /|\  |          VCC|- 3.3V				FAN
-//          |   |             |				____ |
-//          --  |GND      P1.5|--< adc temp	NMOS	|
-//              |         P1.4|--> PWM	---------------[|
-//              |	      |		    |___>>>>____|
-//              |             |			R1      ö GND
-//		|	  P1.0|--> LED
-//              ---------------
-//  adc_value (P1.5) to LM35
-//  PWM	      (P1.4) to FAN / NMOS
-//
-//  Filename : open_5994.c
-//
-//  Created on : November 15, 2017
-//  Updated on : November 19, 2017
-//  Author : Joshua Gould
-//
-//******************************************************************************
-//
-//Reference/Mad Help from Jessica Wozniak & Russell Trafford
-//
+// Heat Enclosure with the MSP430G2553 1.0
+// Steven Porter and Jack Pedicone
+// Last updated 2/5/2018
 //******************************************************************************
 
 #include <msp430.h>
@@ -31,7 +10,6 @@
 void TimerAInit(void);
 void TimerBInit(void);
 void ADC12Init(void);
-void UARTInit(void);
 void Fan_GPIOInit(void);
 void Temp_GPIOInit(void);
 
@@ -61,13 +39,10 @@ void Fan_GPIOInit(void)
 int main(void)
 {
 	WDTCTL = WDTPW + WDTHOLD;		// Stop WDT
-	PM5CTL0 &= ~LOCKLPM5;			//Disable HIGH Z mode
-	Fan_GPIOInit();					//Fan Pin Initialization
-	Temp_GPIOInit();				//Temperature GPIO Initialization
-	TimerAInit();					//Timer A Function call UART
-	TimerBInit();					//Timer B Function call PWM
-	UARTInit();						//UART Initialization
-
+	Fan_GPIOInit();					// Fan Pin Initialization
+	Temp_GPIOInit();				// Temperature GPIO Initialization
+	TimerAInit();					// Timer A Function call UART
+	TimerBInit();					// Timer B Function call PWM
 
 	while (REFCTL0 & REFGENBUSY);            // If ref generator busy, WAIT
 	REFCTL0 |= REFVSEL_0 + REFON;           // Enable internal 1.2 reference
@@ -79,7 +54,6 @@ int main(void)
 
 	while (1)
 	{
-
 		__bis_SR_register(LPM0 + GIE); // Enter LPM0, interrupts enabled
 		__no_operation(); // For debugger
 	}
@@ -137,25 +111,6 @@ __interrupt void USCI_A0_ISR(void)
 	}
 }
 
-void UARTInit(void)
-{
-
-	CSCTL0_H = CSKEY_H;                         // Unlock CS registers
-	CSCTL1 = DCOFSEL_3 | DCORSEL;               // Set DCO to 8MHz
-	CSCTL2 = SELA__VLOCLK | SELS__DCOCLK | SELM__DCOCLK;
-	CSCTL3 = DIVA__1 | DIVS__1 | DIVM__1;       // Set all dividers
-	CSCTL0_H = 0;                               // Lock CS registers
-
-	P2SEL0 &= ~(BIT0 | BIT1);                   //Configure pin 2.0 to RXD
-	P2SEL1 |= BIT0 + BIT1;                      //Configure pin 2.1 to TXD
-												// Configure USCI_A0 for UART mode
-	UCA0CTLW0 = UCSWRST;                        // Put eUSCI in reset
-	UCA0CTLW0 |= UCSSEL__SMCLK;                 // CLK = SMCLK
-	UCA0BRW = 52;                               // 8000000/16/9600
-	UCA0MCTLW |= UCOS16 | UCBRF_1 | 0x4900;
-	UCA0CTLW0 &= ~UCSWRST;                      // Initialize eUSCI
-	UCA0IE |= UCRXIE;                           // Enable USCI_A0 RX interrupt
-}
 void ADC12Init(void)
 {
 	ADC12CTL0 = ADC12SHT0_2 + ADC12ON;      // Set sample time
