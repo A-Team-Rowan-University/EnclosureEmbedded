@@ -16,7 +16,6 @@ void fanInit(void);
 void fanControl(void);
 void tempInit(void);
 void tempControl(void);
-void tempSwitch(void);
 
 //Variable declaration//
 unsigned volatile int		adc_in 		= 0;
@@ -25,10 +24,38 @@ volatile float				voltage 	= 0;
 
 volatile float				tempO		= 0;
 volatile float				tempI		= 0;
+volatile float				temp		= 0;
+
+int main(void)
+{
+	WDTCTL = WDTPW + WDTHOLD;		// Stop WDT
+	fanInit();						// Fan Pin Initialization
+	tempInit();						// Temperature GPIO Initialization
+	TimerAInit();					
+	TimerBInit();					
+
+	while (REFCTL0 & REFGENBUSY);           // If ref generator busy, WAIT
+	REFCTL0 |= REFVSEL_0 + REFON;           // Enable internal 1.2 reference
+
+	ADC10Init();							// ADC10 Function call
+
+	while (!(REFCTL0 & REFGENRDY));         // Wait for reference generator
+	__enable_interrupt(); 					// Enable interrupts.
+
+	while (1)
+	{
+		if (!(tempO == 0) && !(tempI == 0))
+		{
+			TA0CCTL0 &= ~TA0IFG;
+			tempControl();
+		}
+		__bis_SR_register(LPM0 + GIE); // Enter LPM0, interrupts enabled
+	}
+}
 
 void tempInit()
 {
-	//sensor 1
+
 	P2DIR |= BIT0; //set pin 2.0 and 2.1 as outputs
 	P2DIR |= BIT1;
 	
@@ -37,13 +64,15 @@ void tempInit()
 
 void tempControl(void)
 {
-	
-}
-
-void tempSwitch(void)
-{
-	P2OUT ^= BIT0;
-	P2OUT ^= BIT1;
+	temp = tempO + 5;
+	if !(tempI >= tempO)
+	{
+		P1OUT |= BIT2;
+	}
+	else
+	{
+		P1OUT &= ~BIT2;
+	}
 }
 
 void fanInit(void)
@@ -78,65 +107,36 @@ void TimerBInit(void)  //Timer used for the fan
 	TB0CTL = TBSSEL_2 + MC_1;		//Enable Timer B0 with SMCLK and up mode. 1MHz
 }
 
-int main(void)
-{
-	WDTCTL = WDTPW + WDTHOLD;		// Stop WDT
-	fanControl();					// Fan Pin Initialization
-	tempInit();						// Temperature GPIO Initialization
-	TimerAInit();					
-	TimerBInit();					
-
-	while (REFCTL0 & REFGENBUSY);            // If ref generator busy, WAIT
-	REFCTL0 |= REFVSEL_0 + REFON;           // Enable internal 1.2 reference
-
-	ADC10Init();				//ADC10 Function call
-
-	while (!(REFCTL0 & REFGENRDY));          // Wait for reference generator
-	__enable_interrupt(); //Enable interrupts.
-
-	while (1)
-	{
-		if (!(tempO == 0) && !(tempI == 0))
-		{
-			tempControl();
-		}
-		__bis_SR_register(LPM0 + GIE); // Enter LPM0, interrupts enabled
-		__no_operation(); // For debugger
-	}
-}
-
-
-
 #pragma vector=TIMER0_A0_VECTOR
 __interrupt void TIMER0_A0_ISR(void)
 {
 	ADC10CTL0 |= ADC10SC | ADC10ENC;	//start ADC conversation
 }
 
-
 //ADC ISR
 #pragma vector=ADC10_B_VECTOR
 __interrupt void ADC10ISR(void)
 {
-	adc_in = ADC10MEM0;		    //set ADC10MEM to variable
+	adc_in = ADC10MEM0;		    // Pull the result of the ADC conversation from the memory register
 	
-	voltage = adc_in * 0.00029;	    //converts ADC to voltage
-	tempC = voltage / 0.01;		     //converts voltage to Temp C
+	voltage = adc_in * 0.00029;	    	//converts ADC to voltage
+	tempC = voltage / 0.01;		     	//converts voltage to Temp C
+	tempF = ((9 * tempC) / 5) + 32;     //Temp C to Temp F
 	
-	switch (P2OUT)
-	case 
-	if (P2OUT == BIT0)
+	//check to see whether pin 2.0 or 2.1 is on
+	// the purpose of these if statements is to receive two temperatures on a single ADC channel
+	if ((P2OUT && 0x01) == 1) 
 	{
-		tempO = tempC;
-		P2OUT &= ~BIT0;
-		P2OUT |= BIT1;
+		tempO = tempC;	//Store outside temperature from pin 2.0
+		P2OUT &= ~BIT0; 
+		P2OUT |= BIT1;	// Flip to pin 2.1
 	}
 	else
-	if (P2OUT == BIT1)
+	if ((P2OUT && 0x02) == 1)
 	{
-		tempI = tempC;
+		tempI = tempC;	//Store outside temperature from pin 2.0
 		P2OUT &= ~BIT1;
-		P2OUT |= BIT0;
+		P2OUT |= BIT0;	// Flip to pin 2.0
 	}
 }
 
