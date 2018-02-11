@@ -1,7 +1,7 @@
 //*****************************************//
 // Heat Enclosure with the MSP430G2553 	   //
 // Jack Pedicone		   				   //
-// Last updated 2/9/2018				   //			
+// Last updated 2/11/2018				   //			
 //*****************************************//
 
 // SUBJECT TO CHANGE
@@ -65,7 +65,7 @@ void tempInit()
 void tempControl(void)
 {
 	temp = tempO + 5;
-	if !(tempI >= tempO)
+	if !(tempI >= temp)
 	{
 		P1OUT |= BIT2;
 	}
@@ -127,14 +127,14 @@ __interrupt void ADC10ISR(void)
 	// the purpose of these if statements is to receive two temperatures on a single ADC channel
 	if ((P2OUT && 0x01) == 1) 
 	{
-		tempO = tempC;	//Store outside temperature from pin 2.0
+		tempO = tempF;	//Store outside temperature from pin 2.0
 		P2OUT &= ~BIT0; 
 		P2OUT |= BIT1;	// Flip to pin 2.1
 	}
 	else
 	if ((P2OUT && 0x02) == 1)
 	{
-		tempI = tempC;	//Store outside temperature from pin 2.0
+		tempI = tempF;	//Store outside temperature from pin 2.0
 		P2OUT &= ~BIT1;
 		P2OUT |= BIT0;	// Flip to pin 2.0
 	}
