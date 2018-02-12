@@ -80,6 +80,12 @@ void fanInit(void)
 	P1DIR |= BIT1;		//Pin 1.1
 }
 
+void fanControl(void)
+{
+    //Not used right now
+
+}
+
 void ADC10Init(void)
 {
 	ADC10CTL0 = ADC10IE + ADC10SHT0 + ADC10ON + MSC;        // Set sample time for the ADC10 control register 0, turn ADC10 on
@@ -102,7 +108,7 @@ void TimerA1Init(void)  //Timer used for the fan
 									//Set initial values for CCR1 (255 -> 254)
 	TA1CCR1 = 0xFF;				    //reset and set immediately (May change to slower clock)
 	TA1CCR0 = 255 - 1;			    //Set CCR0 for a ~1kHz clock.
-	TA1CTL = TASSEL_2 + MC_1;		//Enable Timer B0 with SMCLK and up mode. 1MHz
+	TA1CTL = TASSEL_2 + MC_1;		//Enable Timer A1 with SMCLK and up mode. 1MHz
 }
 
 #pragma vector=TIMER0_A0_VECTOR
