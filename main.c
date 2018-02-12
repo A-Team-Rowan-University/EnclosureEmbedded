@@ -5,7 +5,6 @@
 //*****************************************//
 
 // SUBJECT TO CHANGE
-
 #include <msp430g2553.h>
 
 //Function Setup//
@@ -36,7 +35,7 @@ int main(void)
 	TimerA1Init();
 
 	//while (REFCTL0 & REFGENBUSY);           // If ref generator busy, WAIT
-	REFCTL0 |= REFVSEL_0 + REFON;           // Enable internal 1.2 reference
+	//REFCTL0 |= REFON;           // Enable internal 1.2 reference
 
 	ADC10Init();							// ADC10 Function call
 
@@ -79,14 +78,12 @@ void tempControl(void)
 void fanInit(void)
 {
 	P1DIR |= BIT1;		//Pin 1.1
-	P1SEL1 &= ~BIT1;	//control which functions will be connected or multiplexed onto the pins.  
-	P1SEL0 |= BIT1;		//The higher four bits have as their function to enable JTAG or to disable it.
 }
 
 void ADC10Init(void)
 {
-	ADC10CTL0 = ADC10IE + ADC10SHT0 + ADC10ON + MSC;      // Set sample time for the ADC10 control register 0, turn ADC10 on
-	ADC10CTL1 = ADC10SHP + INCH3 + ADC10SSEL_0 + CONSEQ_2;                   // Enable sample timer for the ADC10 control register 1
+	ADC10CTL0 = ADC10IE + ADC10SHT0 + ADC10ON + MSC;        // Set sample time for the ADC10 control register 0, turn ADC10 on
+	ADC10CTL1 = ADC10SHT_0 + INCH3 + ADC10SSEL_0 + CONSEQ_2;  // Enable sample timer for the ADC10 control register 1
 	ADC10AE0 |= BIT3; 
 }
 
