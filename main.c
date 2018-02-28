@@ -1,23 +1,26 @@
 //*****************************************//
 // Heat Enclosure with the MSP430G2553 	   //
 // Jack Pedicone		   				   //
-// Last updated 2/11/2018				   //			
+// Last updated 2/27/2018				   //			
 //*****************************************//
 
 // SUBJECT TO CHANGE
 #include <msp430g2553.h>
 
+//Alternative - thermocouple
+//SEN-11050
+
 //Function Setup//
 void TimerA0Init(void);
 void TimerA1Init(void);
-void ADC10Init(void);
+/*void ADC10Init(void);*/
 void fanInit(void);
 void fanControl(void);
 void tempInit(void);
 void tempControl(void);
 
 //Variable declaration//
-unsigned volatile int		adc_in 		= 0;
+//unsigned volatile int		adc_in 		= 0;
 volatile float				tempC 		= 0;
 volatile float              tempF       = 0;
 volatile float				voltage 	= 0;
@@ -37,7 +40,7 @@ int main(void)
 	//while (REFCTL0 & REFGENBUSY);           // If ref generator busy, WAIT
 	//REFCTL0 |= REFON;           // Enable internal 1.2 reference
 
-	ADC10Init();							// ADC10 Function call
+	//ADC10Init();							// ADC10 Function call
 
 	//while (!(REFCTL0 & REFGENRDY));         // Wait for reference generator
 	__enable_interrupt(); 					// Enable interrupts.
@@ -86,12 +89,12 @@ void fanControl(void)
 
 }
 
-void ADC10Init(void)
+/*void ADC10Init(void)
 {
 	ADC10CTL0 = ADC10IE + ADC10SHT0 + ADC10ON + MSC;        // Set sample time for the ADC10 control register 0, turn ADC10 on
 	ADC10CTL1 = ADC10SHT_0 + INCH3 + ADC10SSEL_0 + CONSEQ_2;  // Enable sample timer for the ADC10 control register 1
 	ADC10AE0 |= BIT3; 
-}
+}*/
 
 void TimerA0Init(void)  //Timer used the temperature sensor
 {
@@ -117,6 +120,7 @@ __interrupt void TIMER0_A0_ISR(void)
 	ADC10CTL0 |= ADC10SC | ENC;	//start ADC conversation
 }
 
+/*
 //ADC ISR
 #pragma vector=ADC10_VECTOR
 __interrupt void ADC10ISR(void)
@@ -143,5 +147,5 @@ __interrupt void ADC10ISR(void)
 		P2OUT |= BIT0;	// Flip to pin 2.0
 	}
 }
-
+*/
 
