@@ -1,14 +1,11 @@
 //*****************************************//
 // Heat Enclosure with the MSP430G2553 	   //
 // Jack Pedicone		   				   //
-// Last updated 2/27/2018				   //			
+// Last updated 3/5/2018				   //			
 //*****************************************//
 
 // SUBJECT TO CHANGE
 #include <msp430g2553.h>
-
-//Alternative - thermocouple
-//SEN-11050
 
 //Function Setup//
 void TimerA0Init(void);
@@ -18,6 +15,12 @@ void fanInit(void);
 void fanControl(void);
 void tempInit(void);
 void tempControl(void);
+void readInsideTemp(void);
+void readOutsideTemp(void);
+
+//http://www.smallbulb.net/2012/238-1-wire-and-msp430
+#include "onewire.h"
+#include "delay.h"
 
 //Variable declaration//
 //unsigned volatile int		adc_in 		= 0;
@@ -29,6 +32,7 @@ volatile float				tempO		= 0;
 volatile float				tempI		= 0;
 volatile float				temp		= 0;
 
+
 int main(void)
 {
 	WDTCTL = WDTPW + WDTHOLD;		// Stop WDT
@@ -36,6 +40,13 @@ int main(void)
 	tempInit();						// Temperature GPIO Initialization
 	TimerA0Init();
 	TimerA1Init();
+	onewire_t ow;
+	uint8_t scratchpad[9];
+	
+	ow.port_out = &P2OUT;
+	ow.port_in  = &P2IN;
+	ow.port_ren = &P2REN;
+	ow.port_dir = &P2DIR;
 
 	//while (REFCTL0 & REFGENBUSY);           // If ref generator busy, WAIT
 	//REFCTL0 |= REFON;           // Enable internal 1.2 reference
@@ -58,10 +69,8 @@ int main(void)
 
 void tempInit()
 {
-
 	P2DIR |= BIT0; //set pin 2.0 and 2.1 as outputs
 	P2DIR |= BIT1;
-	
 	P2OUT |= BIT0;
 }
 
@@ -117,8 +126,40 @@ void TimerA1Init(void)  //Timer used for the fan
 #pragma vector=TIMER0_A0_VECTOR
 __interrupt void TIMER0_A0_ISR(void)
 {
-	ADC10CTL0 |= ADC10SC | ENC;	//start ADC conversation
+	//ADC10CTL0 |= ADC10SC | ENC;	//start ADC conversation
 }
+
+void readInsideTemp(void)
+{
+	ow.pin = BIT0;
+ 
+	onewire_reset(&ow);
+	onewire_write_byte(&ow, 0xcc); // skip ROM command
+	onewire_write_byte(&ow, 0x44); // convert T command
+	onewire_line_high(&ow);
+	DELAY_MS(800); // at least 750 ms for the default 12-bit resolution
+	onewire_reset(&ow);
+	onewire_write_byte(&ow, 0xcc); // skip ROM command
+	onewire_write_byte(&ow, 0xbe); // read scratchpad command
+	for (i = 0; i < 9; i++) scratchpad[i] = onewire_read_byte(&ow);
+}
+
+void readOutsideTemp(void)
+{
+	ow.pin = BIT2;
+ 
+	onewire_reset(&ow);
+	onewire_write_byte(&ow, 0xcc); // skip ROM command
+	onewire_write_byte(&ow, 0x44); // convert T command
+	onewire_line_high(&ow);
+	DELAY_MS(800); // at least 750 ms for the default 12-bit resolution
+	onewire_reset(&ow);
+	onewire_write_byte(&ow, 0xcc); // skip ROM command
+	onewire_write_byte(&ow, 0xbe); // read scratchpad command
+	for (i = 0; i < 9; i++) scratchpad[i] = onewire_read_byte(&ow);
+}
+
+
 
 /*
 //ADC ISR
@@ -149,3 +190,9 @@ __interrupt void ADC10ISR(void)
 }
 */
 
+#pragma vector=TIMER0_A0_VECTOR
+__interrupt void TIMER0_A0_ISR(void)
+{
+	readInsideTemp();
+	readOutsideTemp();
+}
