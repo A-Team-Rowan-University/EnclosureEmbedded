@@ -1,26 +1,30 @@
 //*****************************************//
 // Heat Enclosure with the MSP430G2553 	   //
 // Jack Pedicone		   				   //
-// Last updated 3/5/2018				   //			
+// Last updated 3/6/2018				   //			
 //*****************************************//
+
+// The PCB will measure the temperatures inside and outside of the 3D Printed Heated Enclosure.
+// Pin 2.0 = Temperature inside, Pin 2.2 = Temperature outside
+
+// Credit for the temperature sensor code and header code goes to "dsiroky"
+// http://www.smallbulb.net/2012/238-1-wire-and-msp430
+// https://github.com/dsiroky/OneWire/blob/master/onewire.c
 
 // SUBJECT TO CHANGE
 #include <msp430g2553.h>
+#include "onewire.h"
+#include "delay.h"s
 
 //Function Setup//
 void TimerA0Init(void);
 void TimerA1Init(void);
 /*void ADC10Init(void);*/
-void fanInit(void);
 void fanControl(void);
-void tempInit(void);
+void tempFanInit(void);
 void tempControl(void);
 void readInsideTemp(void);
 void readOutsideTemp(void);
-
-//http://www.smallbulb.net/2012/238-1-wire-and-msp430
-#include "onewire.h"
-#include "delay.h"
 
 //Variable declaration//
 //unsigned volatile int		adc_in 		= 0;
@@ -36,42 +40,35 @@ volatile float				temp		= 0;
 int main(void)
 {
 	WDTCTL = WDTPW + WDTHOLD;		// Stop WDT
-	fanInit();						// Fan Pin Initialization
-	tempInit();						// Temperature GPIO Initialization
+	tempFanInit();					// Temperature sensor and fan GPIO Initialization
 	TimerA0Init();
 	TimerA1Init();
 	onewire_t ow;
-	uint8_t scratchpad[9];
+	uint8_t ti[9];
+	uint8_t to[9];
 	
 	ow.port_out = &P2OUT;
 	ow.port_in  = &P2IN;
 	ow.port_ren = &P2REN;
 	ow.port_dir = &P2DIR;
 
-	//while (REFCTL0 & REFGENBUSY);           // If ref generator busy, WAIT
-	//REFCTL0 |= REFON;           // Enable internal 1.2 reference
-
-	//ADC10Init();							// ADC10 Function call
-
-	//while (!(REFCTL0 & REFGENRDY));         // Wait for reference generator
-	__enable_interrupt(); 					// Enable interrupts.
-
 	while (1)
 	{
-		if (!(tempO == 0) && !(tempI == 0))
+		if (!(tempO == 0) && !(tempI == 0)) // If both temperature sensors have read something besides 0...
 		{
-			TA0CCTL0 &= ~TAIFG;
+			TA0CCTL0 &= ~TAIFG; // ... Disable interrupts and go to temperature control
 			tempControl();
 		}
 		__bis_SR_register(LPM0 + GIE); // Enter LPM0, interrupts enabled
 	}
 }
 
-void tempInit()
+void tempFanInit()
 {
-	P2DIR |= BIT0; //set pin 2.0 and 2.1 as outputs
-	P2DIR |= BIT1;
-	P2OUT |= BIT0;
+	P2DIR |= BIT0; //set pin 2.0 and 2.2 as outputs
+	P2DIR |= BIT2;
+	
+	P1DIR |= BIT1; //Pin 1.1 turns the fan on, and always keeps it on
 }
 
 void tempControl(void)
@@ -79,23 +76,12 @@ void tempControl(void)
 	temp = tempO + 5;
 	if (tempI < temp)
 	{
-		P1OUT |= BIT2;
+		P1OUT |= BIT3;
 	}
 	else
 	{
-		P1OUT &= ~BIT2;
+		P1OUT &= ~BIT3;
 	}
-}
-
-void fanInit(void)
-{
-	P1DIR |= BIT1;		//Pin 1.1
-}
-
-void fanControl(void)
-{
-    //Not used right now
-
 }
 
 /*void ADC10Init(void)
@@ -105,7 +91,7 @@ void fanControl(void)
 	ADC10AE0 |= BIT3; 
 }*/
 
-void TimerA0Init(void)  //Timer used the temperature sensor
+void TimerA0Init(void)  //Timer used for the temperature sensor
 {
 	TA0CCTL0 = CCIE;					//Disable timer Interrupt
 	TA0CCTL1 = OUTMOD_3;				//Set/Reset when the timer counts to the TA0CCR1 value, reset for TA0CCR0
@@ -116,17 +102,19 @@ void TimerA0Init(void)  //Timer used the temperature sensor
 
 void TimerA1Init(void)  //Timer used for the fan
 {
-	TA1CCTL1 = OUTMOD_3;			//Set OUTMOD_3 (set/reset) for CCR1
-									//Set initial values for CCR1 (255 -> 254)
-	TA1CCR1 = 0xFF;				    //reset and set immediately (May change to slower clock)
-	TA1CCR0 = 255 - 1;			    //Set CCR0 for a ~1kHz clock.
-	TA1CTL = TASSEL_2 + MC_1;		//Enable Timer A1 with SMCLK and up mode. 1MHz
+	TA1CCTL1 = OUTMOD_3;				//Set OUTMOD_3 (set/reset) for CCR1
+										//Set initial values for CCR1 (255 -> 254)
+	TA1CCR1 = 0xFF;				    	//reset and set immediately (May change to slower clock)
+	TA1CCR0 = 255 - 1;			    	//Set CCR0 for a ~1kHz clock.
+	TA1CTL = TASSEL_2 + MC_1;			//Enable Timer A1 with SMCLK and up mode. 1MHz
 }
 
 #pragma vector=TIMER0_A0_VECTOR
 __interrupt void TIMER0_A0_ISR(void)
 {
 	//ADC10CTL0 |= ADC10SC | ENC;	//start ADC conversation
+	readInsideTemp();
+	readOutsideTemp();
 }
 
 void readInsideTemp(void)
@@ -141,7 +129,7 @@ void readInsideTemp(void)
 	onewire_reset(&ow);
 	onewire_write_byte(&ow, 0xcc); // skip ROM command
 	onewire_write_byte(&ow, 0xbe); // read scratchpad command
-	for (i = 0; i < 9; i++) scratchpad[i] = onewire_read_byte(&ow);
+	for (i = 0; i < 9; i++) ti[i] = onewire_read_byte(&ow);
 }
 
 void readOutsideTemp(void)
@@ -156,7 +144,7 @@ void readOutsideTemp(void)
 	onewire_reset(&ow);
 	onewire_write_byte(&ow, 0xcc); // skip ROM command
 	onewire_write_byte(&ow, 0xbe); // read scratchpad command
-	for (i = 0; i < 9; i++) scratchpad[i] = onewire_read_byte(&ow);
+	for (i = 0; i < 9; i++) to[i] = onewire_read_byte(&ow);
 }
 
 
@@ -189,10 +177,3 @@ __interrupt void ADC10ISR(void)
 	}
 }
 */
-
-#pragma vector=TIMER0_A0_VECTOR
-__interrupt void TIMER0_A0_ISR(void)
-{
-	readInsideTemp();
-	readOutsideTemp();
-}
