@@ -13,8 +13,8 @@
 
 // SUBJECT TO CHANGE
 #include <msp430g2553.h>
-#include "onewire.h"
-#include "delay.h"s
+#include "DS1820.h"
+#include "delay.h"
 
 //Function Setup//
 void TimerA0Init(void);
