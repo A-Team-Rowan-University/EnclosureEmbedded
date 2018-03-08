@@ -1,3 +1,6 @@
 {
-    "C_Cpp.intelliSenseEngineFallback": "Disabled"
+    "files.associations": {
+        "ds18b20.h": "c",
+        "msp430g2553.h": "c"
+    }
 }

@@ -52,7 +52,9 @@
                 "C:/Program Files (x86)/Windows Kits/10/Include/10.0.16299.0/shared",
                 "C:/Program Files (x86)/Windows Kits/10/Include/10.0.16299.0/winrt",
                 "${workspaceRoot}",
-                "${workspaceRoot}/include"
+                "${workspaceRoot}/include",
+                "C:/ti/ccsv7/ccs_base/msp430/include",
+                "C:/ti/ccsv7/tools/compiler/ti-cgt-msp430_16.9.6.LTS/include"
             ],
             "defines": [
                 "_DEBUG",
@@ -68,6 +70,7 @@
                     "C:/Program Files (x86)/Windows Kits/10/Include/10.0.16299.0/ucrt",
                     "C:/Program Files (x86)/Windows Kits/10/Include/10.0.16299.0/shared",
                     "C:/Program Files (x86)/Windows Kits/10/Include/10.0.16299.0/winrt",
+                    "C:/ti/ccsv7/ccs_base/msp430/include",
                     "${workspaceRoot}"
                 ],
                 "limitSymbolsToIncludedHeaders": true,
