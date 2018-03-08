@@ -13,7 +13,7 @@
 
 // SUBJECT TO CHANGE
 #include <msp430g2553.h>
-#include "DS1820.h"
+#include "DS18B20.h"
 #include "delay.h"
 
 //Function Setup//
@@ -23,8 +23,7 @@ void TimerA1Init(void);
 void fanControl(void);
 void tempFanInit(void);
 void tempControl(void);
-void readInsideTemp(void);
-void readOutsideTemp(void);
+void readTemp(void);
 
 //Variable declaration//
 //unsigned volatile int		adc_in 		= 0;
@@ -36,21 +35,12 @@ volatile float				tempO		= 0;
 volatile float				tempI		= 0;
 volatile float				temp		= 0;
 
-
 int main(void)
 {
 	WDTCTL = WDTPW + WDTHOLD;		// Stop WDT
 	tempFanInit();					// Temperature sensor and fan GPIO Initialization
 	TimerA0Init();
 	TimerA1Init();
-	onewire_t ow;
-	uint8_t ti[9];
-	uint8_t to[9];
-	
-	ow.port_out = &P2OUT;
-	ow.port_in  = &P2IN;
-	ow.port_ren = &P2REN;
-	ow.port_dir = &P2DIR;
 
 	while (1)
 	{
@@ -119,35 +109,9 @@ __interrupt void TIMER0_A0_ISR(void)
 
 void readInsideTemp(void)
 {
-	ow.pin = BIT0;
- 
-	onewire_reset(&ow);
-	onewire_write_byte(&ow, 0xcc); // skip ROM command
-	onewire_write_byte(&ow, 0x44); // convert T command
-	onewire_line_high(&ow);
-	DELAY_MS(800); // at least 750 ms for the default 12-bit resolution
-	onewire_reset(&ow);
-	onewire_write_byte(&ow, 0xcc); // skip ROM command
-	onewire_write_byte(&ow, 0xbe); // read scratchpad command
-	for (i = 0; i < 9; i++) ti[i] = onewire_read_byte(&ow);
+	GetData(tempI);
+	GetData(tempO);
 }
-
-void readOutsideTemp(void)
-{
-	ow.pin = BIT2;
- 
-	onewire_reset(&ow);
-	onewire_write_byte(&ow, 0xcc); // skip ROM command
-	onewire_write_byte(&ow, 0x44); // convert T command
-	onewire_line_high(&ow);
-	DELAY_MS(800); // at least 750 ms for the default 12-bit resolution
-	onewire_reset(&ow);
-	onewire_write_byte(&ow, 0xcc); // skip ROM command
-	onewire_write_byte(&ow, 0xbe); // read scratchpad command
-	for (i = 0; i < 9; i++) to[i] = onewire_read_byte(&ow);
-}
-
-
 
 /*
 //ADC ISR

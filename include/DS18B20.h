@@ -2,6 +2,7 @@
 #define ONEWIRE_H
 
 #include <stdint.h>
+#include <msp430g2553.h>
 
 #define DS1820_OUT 					P2OUT
 #define DS1820_DIR 					P2DIR
