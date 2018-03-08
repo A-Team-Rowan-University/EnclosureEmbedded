@@ -1,7 +1,7 @@
 //*****************************************//
 // Heat Enclosure with the MSP430G2553 	   //
-// Jack Pedicone		   				   //
-// Last updated 3/6/2018				   //			
+// Steven Portley and Jack Pedicone        //
+// Last updated 3/8/2018				   //			
 //*****************************************//
 
 // The PCB will measure the temperatures inside and outside of the 3D Printed Heated Enclosure.
@@ -20,16 +20,11 @@
 void TimerA0Init(void);
 void TimerA1Init(void);
 
-void fanControl(void);
 void tempFanInit(void);
 void tempControl(void);
 void readTemp(void);
 
 //Variable declaration//
-
-volatile float				tempC 		= 0;
-volatile float              tempF       = 0;
-volatile float				voltage 	= 0;
 
 volatile float				tempO		= 0;
 volatile float				tempI		= 0;
@@ -101,7 +96,12 @@ __interrupt void TIMER0_A0_ISR(void)
 
 void readTemp(void)
 {
-	GetData(tempI);
-	GetData(tempO);
+	volatile float ti;
+	volatile float to;
+	
+	GetData(ti);
+	tempI = ((9 * ti) / 5) + 32;     //Temp C to Temp F
+	GetData(to);
+	tempO /= ((9 * to) / 5) + 32;     //Temp C to Temp F
 }
 
