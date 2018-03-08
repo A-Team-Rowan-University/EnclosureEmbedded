@@ -38,3 +38,5 @@ __interrupt void ADC10ISR(void)
 	}
 }
 */
+
+//ADC10CTL0 |= ADC10SC | ENC;	//start ADC conversation

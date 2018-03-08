@@ -96,12 +96,10 @@ void TimerA1Init(void)  //Timer used for the fan
 #pragma vector=TIMER0_A0_VECTOR
 __interrupt void TIMER0_A0_ISR(void)
 {
-	//ADC10CTL0 |= ADC10SC | ENC;	//start ADC conversation
-	readInsideTemp();
-	readOutsideTemp();
+	readTemp();
 }
 
-void readInsideTemp(void)
+void readTemp(void)
 {
 	GetData(tempI);
 	GetData(tempO);
