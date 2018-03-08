@@ -7,7 +7,7 @@
 // The PCB will measure the temperatures inside and outside of the 3D Printed Heated Enclosure.
 // Pin 2.0 = Temperature inside, Pin 2.2 = Temperature outside
 
-// Credit for the temperature sensor code and header code goes to "dsiroky"
+// Credit for the temperature sensor code and header code goes to Ishan Karve
 // http://www.smallbulb.net/2012/238-1-wire-and-msp430
 // https://github.com/dsiroky/OneWire/blob/master/onewire.c
 
