@@ -30,22 +30,21 @@ volatile float				tempO		= 0;
 volatile float				tempI		= 0;
 volatile float				temp		= 0;
 
+volatile float ti;
+volatile float to;
+
+
 int main(void)
 {
 	WDTCTL = WDTPW + WDTHOLD;		// Stop WDT
 	tempFanInit();					// Temperature sensor and fan GPIO Initialization
 	TimerA0Init();
-	TimerA1Init();
+	TA1CCTL1 &= ~CCIFG;
+	TA1CCTL1 &= ~CCIE;
+	_BIS_SR (CPUOFF + GIE);
+	//TimerA1Init();
 
-	while (1)
-	{
-		if (!(tempO == 0) && !(tempI == 0)) // If both temperature sensors have read something besides 0...
-		{
-			TA0CCTL0 &= ~TAIFG; // ... Disable interrupts and go to temperature control
-			tempControl();
-		}
-		__bis_SR_register(LPM0 + GIE); // Enter LPM0, interrupts enabled
-	}
+	while (1){}
 }
 
 void tempFanInit()
@@ -72,36 +71,37 @@ void tempControl(void)
 
 void TimerA0Init(void)  //Timer used for the temperature sensor
 {
-	TA0CCTL0 = CCIE;					//Disable timer Interrupt
-	TA0CCTL1 = OUTMOD_3;				//Set/Reset when the timer counts to the TA0CCR1 value, reset for TA0CCR0
+    TA0CCTL0 &= ~CCIFG;
+	TA0CCTL0 |= CCIE;					//Disable timer Interrupt
+	TA0CCTL1 |= OUTMOD_3;				//Set/Reset when the timer counts to the TA0CCR1 value, reset for TA0CCR0
 	TA0CCR1 = 256;
 	TA0CCR0 = 4096 - 1;					//Set CCR0 for a ~1kHz clock.
-	TA0CTL = TASSEL_1 + MC_1 + ID_3;	//Enable Timer A with SMCLK
+	TA0CTL |= TASSEL_1 + MC_1 + ID_3;	//Enable Timer A with SMCLK
 }
 
 void TimerA1Init(void)  //Timer used for the fan
 {
-	TA1CCTL1 = OUTMOD_3;				//Set OUTMOD_3 (set/reset) for CCR1
+    TA1CCTL1 &= ~CCIFG;
+	TA1CCTL1 |= OUTMOD_3;				//Set OUTMOD_3 (set/reset) for CCR1
 										//Set initial values for CCR1 (255 -> 254)
 	TA1CCR1 = 0xFF;				    	//reset and set immediately (May change to slower clock)
 	TA1CCR0 = 255 - 1;			    	//Set CCR0 for a ~1kHz clock.
-	TA1CTL = TASSEL_2 + MC_1;			//Enable Timer A1 with SMCLK and up mode. 1MHz
+	TA1CTL |= TASSEL_2 + MC_1;			//Enable Timer A1 with SMCLK and up mode. 1MHz
 }
 
 #pragma vector=TIMER0_A0_VECTOR
 __interrupt void TIMER0_A0_ISR(void)
 {
-	readTemp();
+    ti = GetData();
+    tempI = ((9 * ti) / 5) + 32;     //Temp C to Temp F
+    to = GetData();
+    tempO = ((9 * to) / 5) + 32;     //Temp C to Temp F
+	TA0CCTL0 &= ~CCIFG;
 }
 
-void readTemp(void)
+
+#pragma vector=TIMER0_A1_VECTOR
+__interrupt void TIMER0_A1_ISR(void)
 {
-	volatile float ti;
-	volatile float to;
-	
-	GetData(ti);
-	tempI = ((9 * ti) / 5) + 32;     //Temp C to Temp F
-	GetData(to);
-	tempO /= ((9 * to) / 5) + 32;     //Temp C to Temp F
+    TA1CCTL0 &= ~CCIFG;
 }
-
