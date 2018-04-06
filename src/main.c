@@ -41,11 +41,11 @@ int main(void)
     TA1CCTL1 &= ~CCIFG;
     TA1CCTL1 &= ~CCIE;
     _BIS_SR (GIE);
+    DCOCTL = CALDCO_1MHZ;
     //TimerA1Init();
 
     while (1)
     {
-
     }
 }
 
