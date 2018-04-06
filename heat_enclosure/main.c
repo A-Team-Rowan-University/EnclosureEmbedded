@@ -42,6 +42,7 @@ int main(void)
     TA1CCTL1 &= ~CCIE;
     _BIS_SR (GIE);
     //TimerA1Init();
+    tempO = 0;
 
     while (1)
     {
@@ -53,25 +54,32 @@ void tempFanInit(void)
 {
     P1DIR |= BIT0;
     P1DIR |= BIT6;
-    P2DIR |= BIT0; //set pin 2.0 and 2.2 as outputs
-    P2DIR |= BIT2;
+    P2DIR &= ~BIT0; //set pin 2.0 and 2.2 as outputs
     //P1DIR |= BIT1; //Pin 1.1 turns the fan on, and always keeps it on
     P1OUT &= 0x00;
+    //P2OUT &= BIT0;
+    //P2IN &= BIT0;
 }
 
 void tempControl(void)
 {
-    P1OUT &= BIT6;
-    temp = tempO + 5;
+    //P1OUT &= BIT6;
+    tempO = 60;
+    //temp = tempO + 5;
     if (tempI < temp)
     {
-        P1OUT ^= BIT0;
+        P1OUT ^= BIT6;
     }
     else
     {
         P1OUT ^= BIT6;
     }
+    __delay_cycles(500000);
+    P1OUT ^= BIT6;
+    __delay_cycles(500000);
+    P1OUT ^= BIT0;
     TA0CCTL0 &= CCIFG;
+
 }
 
 
@@ -80,7 +88,7 @@ void TimerA0Init(void)  //Timer used for the temperature sensor
     TA0CCTL0 &= ~CCIFG;
     TA0CCTL0 |= CCIE;                   //Disable timer Interrupt
     TA0CCTL1 |= OUTMOD_3;               //Set/Reset when the timer counts to the TA0CCR1 value, reset for TA0CCR0
-    TA0CCR1 = 256;
+    TA0CCR1 = 64;
     TA0CCR0 = 4096 - 1;                 //Set CCR0 for a ~1kHz clock.
     TA0CTL |= TASSEL_1 + MC_1 + ID_3;   //Enable Timer A with SMCLK
 }
@@ -98,7 +106,7 @@ void TimerA1Init(void)  //Timer used for the fan
 #pragma vector=TIMER0_A0_VECTOR
 __interrupt void TIMER0_A0_ISR(void)
 {
-    P1OUT &= BIT0;
+    P1OUT ^= BIT0;
     ti = GetData();
     tempI = ((9 * ti) / 5) + 32;     //Temp C to Temp F
     //to = GetData();
