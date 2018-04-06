@@ -1,115 +1,162 @@
-//*****************************************//
-// Heat Enclosure with the MSP430G2553     //
-// Steven Portley and Jack Pedicone        //
-// Last updated 3/27/2018                   //
-//*****************************************//
-
-// The PCB will measure the temperatures inside and outside of the 3D Printed Heated Enclosure.
-// Pin 2.0 = Temperature inside, Pin 2.2 = Temperature outside
-
-// Credit for the temperature sensor code and header code goes to Ishan Karve
-// http://www.smallbulb.net/2012/238-1-wire-and-msp430
-// https://github.com/dsiroky/OneWire/blob/master/onewire.c
-
-// SUBJECT TO CHANGE
-#include <msp430g2553.h>
 #include "DS18B20.h"
 #include "delay.h"
+#include <msp430g2553.h>
 
-//Function Setup//
-void TimerA0Init(void);
-void TimerA1Init(void);
+static void InitDS18B20(void);
+static unsigned int ResetDS18B20(void);
+static void WriteZero(void);
+static void WriteOne(void);
+static unsigned int ReadBit (void);
+static void WriteByte(char byte);
+static uint16_t ReadDS18B20(void);
 
-void tempFanInit(void);
-void tempControl(void);
-void readTemp(void);
 
-//Variable declaration//
 
-volatile float              tempO       = 0;
-volatile float              tempI       = 0;
-volatile float              temp        = 0;
-
-volatile float ti;
-//volatile float to;
-
-int main(void)
-{
-    WDTCTL = WDTPW + WDTHOLD;       // Stop WDT
-    tempFanInit();                  // Temperature sensor and fan GPIO Initialization
-    TimerA0Init();
-    TA1CCTL1 &= ~CCIFG;
-    TA1CCTL1 &= ~CCIE;
-    _BIS_SR (GIE);
-    //TimerA1Init();
-
-    while (1)
-    {
-
-    }
+void InitDS18B20(void){
+    //Nothing for now
+    //maybe reconfigure sensor resolution?
 }
 
-void tempFanInit(void)
-{
-    P1DIR |= BIT0;
-    P1DIR |= BIT6;
-    P2DIR |= BIT0; //set pin 2.0 and 2.2 as outputs
-    P2DIR |= BIT2;
-    //P1DIR |= BIT1; //Pin 1.1 turns the fan on, and always keeps it on
-    P1OUT &= 0x00;
-}
-
-void tempControl(void)
-{
-    P1OUT &= BIT6;
-    temp = tempO + 5;
-    if (tempI < temp)
+unsigned int ResetDS18B20(void){
+    /* Steps to reset one wire bus
+     * Pull bus low
+     * hold condition for 480us
+     * release bus
+     * wait for 60us
+     * read bus
+     * if bus low then device present set / return var accordingly
+     * wait for balance period (480-60)
+     */
+    int device_present=0;
+    WriteZero();                                // Drive bus low
+    DELAY_US (480);                             // hold for 480us
+    DS18B20_DIR &= ~DS18B20_DATA_IN_PIN;          //release bus. set port in input mode
+    DELAY_US (70);                             //wait for 480us, testing with 70
+    if(DS18B20_IN & DS18B20_DATA_IN_PIN)
     {
-        P1OUT ^= BIT0;
+        return device_present=1;
     }
     else
     {
-        P1OUT ^= BIT6;
+        return device_present= 0;
     }
-    TA0CCTL0 &= CCIFG;
+
+}
+
+void DS18B20_LO(void){
+    DS18B20_DIR |= DS18B20_DATA_IN_PIN; //set port as output
+    DS18B20_OUT |= DS18B20_DATA_IN_PIN;   //set port high
+}
+
+void DS18B20_HI(void){
+
+    DS18B20_DIR|=DS18B20_DATA_IN_PIN; //set port as output
+    DS18B20_OUT|=DS18B20_DATA_IN_PIN; //set port high
+}
+
+inline void WriteZero(void){
+    /*Steps for master to transmit logical zero to slave device on bus
+     * pull bus low
+     * hold for 60us
+     * release bus
+     * wait for 1us for recovery
+     */
+
+    DS18B20_LO();                                // Drive bus low
+    DELAY_US (60);                              //sample time slot for the slave
+    DS18B20_DIR &= ~DS18B20_DATA_IN_PIN;          //release bus. set port in input mode
+    DELAY_US (1);                               //recovery time slot
+
+}
+
+inline void WriteOne(void){
+    /*Steps for master to transmit logical one to slave device on bus
+     * pull bus low
+     * hold for 5us
+     * release bus
+     * wait for 1us for recovery
+     */
+    DS18B20_LO();                                // Drive bus low
+    DELAY_US (5);
+    DS18B20_DIR &= ~DS18B20_DATA_IN_PIN;          //release bus. set port in input mode
+    DELAY_US (55);                              //sample time slot for the slave
+    DELAY_US (1);                               //recovery time slot
+
+}
+
+unsigned int ReadBit (void)
+{
+
+    /*Steps for master to issue a read request to slave device on bus aka milk slave device
+     * pull bus low
+     * hold for 5us
+     * release bus
+     * wait for 45us for recovery
+     */
+    int bit=0;
+    DS18B20_LO();                                // Drive bus low
+    DELAY_US (5);                               //hold for 5us
+    DS18B20_DIR &= ~DS18B20_DATA_IN_PIN;          //release bus. set port in input mode
+    DELAY_US (10);                              //wait for slave to drive port either high or low
+    if(DS18B20_IN & DS18B20_DATA_IN_PIN)          //read bus
+    {
+        bit=1;                                  //if read high set bit high
+    }
+    DELAY_US (45);                              //recovery time slot
+    return bit;
+
+}
+
+void WriteByte(char byte){
+    unsigned char i;
+    for(i=8;i>0;i--)
+    {
+        if(byte){
+            WriteOne();
+        }else{
+            WriteZero();
+        }
+
+        byte >>=1;
+    }
+}
+
+uint16_t ReadDS18B20(void){
+    unsigned char i;
+    unsigned int data=0;
+    DS18B20_DIR &= ~DS18B20_DATA_IN_PIN;          //release bus. set port in input mode
+
+     for(i=16;i>0;i--)
+    {
+        data>>=1;                                 //replaced 1 with i1
+        if(ReadBit())
+        {
+            data |= 0x8000;
+        }
+    }
+    return(data);
 }
 
 
-void TimerA0Init(void)  //Timer used for the temperature sensor
-{
-    TA0CCTL0 &= ~CCIFG;
-    TA0CCTL0 |= CCIE;                   //Disable timer Interrupt
-    TA0CCTL1 |= OUTMOD_3;               //Set/Reset when the timer counts to the TA0CCR1 value, reset for TA0CCR0
-    TA0CCR1 = 256;
-    TA0CCR0 = 4096 - 1;                 //Set CCR0 for a ~1kHz clock.
-    TA0CTL |= TASSEL_1 + MC_1 + ID_3;   //Enable Timer A with SMCLK
-}
-
-void TimerA1Init(void)  //Timer used for the fan
-{
-    TA1CCTL1 &= ~CCIFG;
-    TA1CCTL1 |= OUTMOD_3;               //Set OUTMOD_3 (set/reset) for CCR1
-                                        //Set initial values for CCR1 (255 -> 254)
-    TA1CCR1 = 0xFF;                     //reset and set immediately (May change to slower clock)
-    TA1CCR0 = 255 - 1;                  //Set CCR0 for a ~1kHz clock.
-    TA1CTL |= TASSEL_2 + MC_1;          //Enable Timer A1 with SMCLK and up mode. 1MHz
-}
-
-#pragma vector=TIMER0_A0_VECTOR
-__interrupt void TIMER0_A0_ISR(void)
-{
-    P1OUT &= BIT0;
-    ti = GetData();
-    tempI = ((9 * ti) / 5) + 32;     //Temp C to Temp F
-    //to = GetData();
-    //tempO = ((9 * to) / 5) + 32;     //Temp C to Temp F
-    TA0CCTL0 &= ~CCIFG;
-    tempControl();
-}
-
-
-#pragma vector=TIMER0_A1_VECTOR
-__interrupt void TIMER0_A1_ISR(void)
-{
-    TA1CCTL0 &= ~CCIFG;
+float GetData(void){
+    unsigned int temp = 0;
+    ResetDS18B20();
+    WriteByte(DS18B20_SKIP_ROM);
+    WriteByte(DS18B20_CONVERT_T);
+    DELAY_MS(750);
+    ResetDS18B20();
+    WriteByte(DS18B20_SKIP_ROM);
+    WriteByte(DS18B20_READ_SCRATCHPAD);
+    WriteByte(DS18B20_COPY);
+    temp = ReadDS18B20();
+    ResetDS18B20();
+    if(temp<0x8000)     
+    {
+        return(temp*0.0625);
+    }
+    else                     
+    {
+        temp=(~temp)+1;
+        return(temp*0.0625);
+    }    
 }

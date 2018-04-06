@@ -56,22 +56,20 @@ void tempFanInit(void)
     P2DIR |= BIT0; //set pin 2.0 and 2.2 as outputs
     P2DIR |= BIT2;
     //P1DIR |= BIT1; //Pin 1.1 turns the fan on, and always keeps it on
-    P1OUT &= 0x00;
+    //P1OUT &= 0x00;
 }
 
 void tempControl(void)
 {
-    P1OUT &= BIT6;
     temp = tempO + 5;
     if (tempI < temp)
     {
-        P1OUT ^= BIT0;
+        //P1OUT ^= BIT0;
     }
     else
     {
-        P1OUT ^= BIT6;
+        //P1OUT ^= BIT6;
     }
-    TA0CCTL0 &= CCIFG;
 }
 
 
@@ -98,13 +96,14 @@ void TimerA1Init(void)  //Timer used for the fan
 #pragma vector=TIMER0_A0_VECTOR
 __interrupt void TIMER0_A0_ISR(void)
 {
-    P1OUT &= BIT0;
+    P1OUT |= BIT0;
     ti = GetData();
     tempI = ((9 * ti) / 5) + 32;     //Temp C to Temp F
     //to = GetData();
     //tempO = ((9 * to) / 5) + 32;     //Temp C to Temp F
-    TA0CCTL0 &= ~CCIFG;
+    P1OUT &= ~BIT0;
     tempControl();
+    TA0CCTL0 &= ~CCIFG;
 }
 
 
