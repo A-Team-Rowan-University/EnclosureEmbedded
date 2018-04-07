@@ -55,6 +55,7 @@ void tempFanInit(void)
     P1DIR |= BIT6;
     P2DIR |= BIT0; //set pin 2.0 and 2.2 as outputs
     P2DIR |= BIT2;
+    P2DIR &= ~BIT4;
     //P1DIR |= BIT1; //Pin 1.1 turns the fan on, and always keeps it on
     //P1OUT &= 0x00;
 }
